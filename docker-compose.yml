@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: shopsphere-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: shopsphere_auth
+      POSTGRES_USER: shopsphere
+      POSTGRES_PASSWORD: shopsphere_dev_password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopsphere -d shopsphere_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    container_name: shopsphere_auth
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: shopsphere_auth
+      DATABASE_USER: shopsphere
+      DATABASE_PASSWORD: shopsphere_dev_password
+
+    depends_on:
+      postgres:
+        condition: service_healthy 
+
+volumes:
+  postgres_data:

@@ -56,6 +56,11 @@ def get_product_by_id_endpoint(
 @router.get("",response_model=list[ProductResponse])
 def list_products(
     active_only: bool = True,
+    category_id: uuid.UUID | None = None,
     db: Session = Depends(get_db)   
     ):
-    return get_products(db=db,active_only=active_only)
+    return get_products(
+        db=db,
+        active_only=active_only,
+        category_id=category_id
+        )

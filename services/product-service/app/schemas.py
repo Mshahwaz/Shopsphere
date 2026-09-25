@@ -32,3 +32,17 @@ class CategoryResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class ProductUpdateRequest(BaseModel):
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255
+    ) 
+
+    description: str | None = None
+
+    price: Decimal | None = Field(
+        default=None,
+        gt=0
+    )

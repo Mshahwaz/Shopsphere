@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas import (
     ProductCreateRequest,
-    ProductResponse
+    ProductResponse,
+    ProductUpdateRequest
 )
 from app.services.product_service import (
     create_product,
     get_product_by_id,
     get_products,
+    update_product
 )
 
 
@@ -67,3 +69,26 @@ def list_products(
         active_only=active_only,
         category_id=category_id
         )
+
+@router.patch("/{product_id}",
+    response_model=ProductResponse,
+    )
+def update_product_endpoint(
+    product_id: uuid.UUID,
+    request: ProductUpdateRequest,
+    db: Session = Depends(get_db)
+    ):
+
+    product=update_product(
+        db=db,
+        product_id=product_id,
+        request=request
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+
+    return product

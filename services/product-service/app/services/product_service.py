@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Product, Category
-from app.schemas import ProductCreateRequest
+from app.schemas import ProductCreateRequest, ProductUpdateRequest
 
 def create_product(
     db: Session,
@@ -35,6 +35,30 @@ def get_product_by_id(
             Product.id == product_id
         )
     )
+
+def update_product(
+    db: Session,
+    product_id: uuid.UUID,
+    request: ProductUpdateRequest
+) -> Product | None:
+
+    product=get_product_by_id(db=db,product_id=product_id)
+
+    if product is None:
+        return None
+    
+    if request.name is not None:
+        product.name=request.name
+    
+    if request.description is not None:
+        product.description=request.description
+
+    if request.price is not None:
+        product.price=request.price
+
+    db.commit()
+    db.refresh(product)
+    return product
 
 def get_products(
     db: Session,

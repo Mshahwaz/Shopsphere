@@ -46,3 +46,8 @@ class ProductUpdateRequest(BaseModel):
         default=None,
         gt=0
     )
+
+class ProductStatusUpdateRequest(BaseModel):
+    is_active: bool
+
+    

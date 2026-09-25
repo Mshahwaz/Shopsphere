@@ -60,6 +60,24 @@ def update_product(
     db.refresh(product)
     return product
 
+def update_product_status(
+    db: Session,
+    product_id: uuid.UUID,
+    is_active: bool
+    ) -> Product | None:
+
+    product=get_product_by_id(db=db,product_id=product_id)
+
+    if product is None:
+        return None
+
+    product.is_active = is_active
+
+    db.commit()
+    db.refresh(product)
+
+    return product
+
 def get_products(
     db: Session,
     active_only: bool = True,

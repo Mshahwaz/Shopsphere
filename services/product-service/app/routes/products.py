@@ -7,13 +7,15 @@ from app.database import get_db
 from app.schemas import (
     ProductCreateRequest,
     ProductResponse,
-    ProductUpdateRequest
+    ProductUpdateRequest,
+    ProductStatusUpdateRequest
 )
 from app.services.product_service import (
     create_product,
     get_product_by_id,
     get_products,
-    update_product
+    update_product,
+    update_product_status
 )
 
 
@@ -83,6 +85,28 @@ def update_product_endpoint(
         db=db,
         product_id=product_id,
         request=request
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+
+    return product
+
+@router.patch("/{product_id}/status",
+    response_model=ProductResponse
+    )
+def update_product_status_endpoint(
+    product_id: uuid.UUID,
+    request: ProductStatusUpdateRequest,
+    db: Session = Depends(get_db)
+    ):
+    product=update_product_status(
+        db=db,
+        product_id=product_id,
+        is_active=request.is_active
     )
 
     if product is None:

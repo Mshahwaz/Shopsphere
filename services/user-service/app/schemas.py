@@ -12,3 +12,8 @@ class UserResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class UserUpdateRequest(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None

@@ -16,7 +16,7 @@ def create_product(
         name=request.name,
         description=request.description,
         price=request.price,
-        is_active=True,
+        is_active=False,
     )
 
     db.add(product)
@@ -34,4 +34,20 @@ def get_product_by_id(
         select(Product).where(
             Product.id == product_id
         )
+    )
+
+def get_products(
+    db: Session,
+    active_only: bool = True,
+    ) -> list[Product]:
+
+    query=select(Product)
+
+    if active_only:
+        query = query.where(
+            Product.is_active.is_(True)
+        )
+
+    return list(
+        db.scalars(query).all()
     )

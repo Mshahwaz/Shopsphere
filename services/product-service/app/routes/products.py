@@ -7,7 +7,8 @@ from app.database import get_db
 from app.schemas import ProductCreateRequest, ProductResponse
 from app.services.product_service import (
     create_product,
-    get_product_by_id
+    get_product_by_id,
+    get_products
 )
 
 
@@ -51,3 +52,10 @@ def get_product_by_id_endpoint(
             detail="Product not found"
         )
     return product
+
+@router.get("",response_model=list[ProductResponse])
+def list_products(
+    active_only: bool = True,
+    db: Session = Depends(get_db)   
+    ):
+    return get_products(db=db,active_only=active_only)

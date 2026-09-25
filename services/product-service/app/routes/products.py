@@ -4,11 +4,14 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import ProductCreateRequest, ProductResponse
+from app.schemas import (
+    ProductCreateRequest,
+    ProductResponse
+)
 from app.services.product_service import (
     create_product,
     get_product_by_id,
-    get_products
+    get_products,
 )
 
 

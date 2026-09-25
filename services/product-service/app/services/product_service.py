@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Product
+from app.models import Product, Category
 from app.schemas import ProductCreateRequest
 
 def create_product(
@@ -57,4 +57,39 @@ def get_products(
     
     return list(
         db.scalars(query).all()
+    )
+
+def create_category(
+    db: Session,
+    name: str
+    ):
+    category=Category(
+        name=name
+    )
+
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+
+    return category
+
+def get_category_by_id(
+    db: Session,
+    category_id: uuid.UUID
+    ) -> Category | None:
+
+    return db.scalar(
+        select(Category).where(
+        Category.id == category_id
+    )
+    )
+
+def get_categories(
+    db: Session,
+    ) -> list[Category]:
+
+    return list(
+        db.scalars(
+            select(Category).order_by(Category.name)
+        ).all()
     )

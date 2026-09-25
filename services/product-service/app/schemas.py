@@ -21,3 +21,14 @@ class ProductResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class CategoryCreateRequest(BaseModel):
+    name: str = Field(min_length=1,max_length=100)
+
+class CategoryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+
+    model_config = {
+        "from_attributes": True
+    }

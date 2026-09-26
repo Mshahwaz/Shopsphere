@@ -26,3 +26,8 @@ class ReleaseRequest(BaseModel):
     quantity: int = Field(
         gt=0,
     )
+
+class StockReductionRequest(BaseModel):
+    quantity: int = Field(
+        gt=0,
+    )

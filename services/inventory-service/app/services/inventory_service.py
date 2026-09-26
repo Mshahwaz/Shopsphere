@@ -111,3 +111,36 @@ def release_stock(
         raise
 
     return inventory
+
+def reduce_reserved_stock(
+    db: Session,
+    product_id: uuid.UUID,
+    quantity: int,
+) -> Inventory | None:
+
+    inventory = db.scalar(
+        select(Inventory)
+        .where(
+            Inventory.product_id == product_id
+        )
+        .with_for_update()
+    )
+
+    if inventory is None:
+        return None
+
+    if inventory.reserved_quantity < quantity:
+        raise ValueError(
+            "Insufficient reserved stock"
+        )
+
+    inventory.reserved_quantity -= quantity
+
+    try:
+        db.commit()
+        db.refresh(inventory)
+    except Exception:
+        db.rollback()
+        raise
+
+    return inventory

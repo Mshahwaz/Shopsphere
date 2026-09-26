@@ -8,13 +8,15 @@ from app.schemas import (
     InventoryResponse,
     StockUpdateRequest,
     ReservationRequest,
-    ReleaseRequest
+    ReleaseRequest,
+    StockReductionRequest
 )
 from app.services.inventory_service import (
     add_stock,
     get_inventory_by_product_id,
     reserve_stock,
-    release_stock
+    release_stock,
+    reduce_reserved_stock
     )
 
 
@@ -101,6 +103,35 @@ def release_stock_endpoint(
 ):
     try:
         inventory = release_stock(
+            db=db,
+            product_id=product_id,
+            quantity=request.quantity,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
+
+    if inventory is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Inventory not found",
+        )
+
+    return inventory
+
+@router.post(
+    "/{product_id}/reduce",
+    response_model=InventoryResponse,
+)
+def reduce_stock_endpoint(
+    product_id: uuid.UUID,
+    request: StockReductionRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        inventory = reduce_reserved_stock(
             db=db,
             product_id=product_id,
             quantity=request.quantity,

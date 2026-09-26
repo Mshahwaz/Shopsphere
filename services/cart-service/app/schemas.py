@@ -18,3 +18,11 @@ class CartItemResponse(BaseModel):
         "from_attributes": True,
     }
     
+class CartResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    items: list[CartItemResponse]
+
+    model_config = {
+        "from_attributes": True,
+    }

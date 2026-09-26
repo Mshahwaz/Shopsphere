@@ -61,3 +61,28 @@ def add_item_to_cart(
     db.refresh(cart_item)
 
     return cart_item
+
+def get_cart(
+    db: Session,
+    user_id: uuid.UUID,
+    ) -> tuple[Cart, list[CartItem]] | None:
+    
+    cart=db.scalar(
+        select(Cart).where(
+            Cart.user_id == user_id
+        )
+    )
+
+    if cart is None:
+        return None
+
+    items = list(
+        db.scalars(
+            select(CartItem)
+            .where(
+                CartItem.cart_id == cart.id
+            )
+            .order_by(CartItem.created_at)
+        ).all()
+    )
+    return cart, items

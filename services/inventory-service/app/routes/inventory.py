@@ -7,12 +7,14 @@ from app.database import get_db
 from app.schemas import (
     InventoryResponse,
     StockUpdateRequest,
-    ReservationRequest
+    ReservationRequest,
+    ReleaseRequest
 )
 from app.services.inventory_service import (
     add_stock,
     get_inventory_by_product_id,
-    reserve_stock
+    reserve_stock,
+    release_stock
     )
 
 
@@ -70,6 +72,35 @@ def reserve_stock_endpoint(
 ):
     try:
         inventory = reserve_stock(
+            db=db,
+            product_id=product_id,
+            quantity=request.quantity,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
+
+    if inventory is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Inventory not found",
+        )
+
+    return inventory
+
+@router.post(
+    "/{product_id}/release",
+    response_model=InventoryResponse,
+)
+def release_stock_endpoint(
+    product_id: uuid.UUID,
+    request: ReleaseRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        inventory = release_stock(
             db=db,
             product_id=product_id,
             quantity=request.quantity,

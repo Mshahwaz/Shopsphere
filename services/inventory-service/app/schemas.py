@@ -21,3 +21,8 @@ class ReservationRequest(BaseModel):
     quantity: int = Field(
         gt=0,
     )
+
+class ReleaseRequest(BaseModel):
+    quantity: int = Field(
+        gt=0,
+    )

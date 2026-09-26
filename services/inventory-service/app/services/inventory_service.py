@@ -45,3 +45,35 @@ def get_inventory_by_product_id(
             Inventory.product_id == product_id
         )
     )
+
+def reserve_stock(
+    db: Session,
+    product_id: uuid.UUID,
+    quantity: int,
+) -> Inventory | None:
+
+    inventory = db.scalar(
+        select(Inventory)
+        .where(
+            Inventory.product_id == product_id
+        )
+        .with_for_update()
+    )
+
+    if inventory is None:
+        return None
+
+    if inventory.available_quantity < quantity:
+        raise ValueError("Insufficient stock")
+
+    inventory.available_quantity -= quantity
+    inventory.reserved_quantity += quantity
+
+    try:
+        db.commit()
+        db.refresh(inventory)
+    except Exception:
+        db.rollback()
+        raise
+
+    return inventory

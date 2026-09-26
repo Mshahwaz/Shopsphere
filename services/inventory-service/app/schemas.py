@@ -16,3 +16,8 @@ class InventoryResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class ReservationRequest(BaseModel):
+    quantity: int = Field(
+        gt=0,
+    )

@@ -34,3 +34,14 @@ def add_stock(
     db.refresh(inventory)
 
     return inventory
+
+def get_inventory_by_product_id(
+    db: Session,
+    product_id: uuid.UUID,
+) -> Inventory | None:
+
+    return db.scalar(
+        select(Inventory).where(
+            Inventory.product_id == product_id
+        )
+    )

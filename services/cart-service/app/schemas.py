@@ -26,3 +26,6 @@ class CartResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class CartItemUpdateRequest(BaseModel):
+    quantity: int = Field(gt=0)

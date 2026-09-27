@@ -1,12 +1,17 @@
 from fastapi import FastAPI
+
+from app.routes.orders import router as orders_router
 from app.database import engine
 from sqlalchemy import text
+
 
 app = FastAPI(
     title="ShopSphere Order Service",
     version="1.0.0",
 )
 
+
+app.include_router(orders_router)
 
 @app.get("/health")
 def health_check():

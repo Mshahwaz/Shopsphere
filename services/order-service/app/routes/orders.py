@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+import uuid
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -7,7 +8,11 @@ from app.schemas import (
     OrderItemResponse,
     OrderResponse,
 )
-from app.services.order_service import create_order
+from app.services.order_service import (
+    create_order,
+    get_order,
+    get_order_items
+    )
 
 router = APIRouter(
     prefix="/api/v1/orders",
@@ -60,3 +65,38 @@ def order_items_for_response(
         )
         .order_by(OrderItem.created_at)
     ).all()
+
+@router.get(
+    "/{order_id}",
+    response_model=OrderResponse,
+)
+def get_order_endpoint(
+    order_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    order = get_order(
+        db=db,
+        order_id=order_id,
+    )
+
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+    items = get_order_items(
+        db=db,
+        order_id=order.id,
+    )
+
+    return OrderResponse(
+        id=order.id,
+        user_id=order.user_id,
+        status=order.status,
+        total_amount=order.total_amount,
+        items=[
+            OrderItemResponse.model_validate(item)
+            for item in items
+        ],
+    )

@@ -1,4 +1,6 @@
+import uuid
 from decimal import Decimal
+from sqlalchemy import select
 
 from sqlalchemy.orm import Session
 
@@ -57,3 +59,27 @@ def create_order(
     except Exception:
         db.rollback()
         raise
+
+def get_order(
+    db: Session,
+    order_id: uuid.UUID,
+) -> Order | None:
+    return db.scalar(
+        select(Order).where(
+            Order.id == order_id
+        )
+    )
+
+def get_order_items(
+    db: Session,
+    order_id: uuid.UUID
+) -> list[OrderItem]:
+    return list(
+        db.scalars(
+            select(OrderItem)
+            .where(
+                OrderItem.order_id == order_id
+            )
+            .order_by(OrderItem.created_at)
+        ).all()
+    )

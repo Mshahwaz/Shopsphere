@@ -1,5 +1,6 @@
 import uuid
 from decimal import Decimal
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -44,3 +45,14 @@ class OrderResponse(BaseModel):
     status: str
     total_amount: Decimal
     items: list[OrderItemResponse]
+
+class OrderSummaryResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    status: str
+    total_amount: Decimal
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True,
+    }

@@ -83,3 +83,18 @@ def get_order_items(
             .order_by(OrderItem.created_at)
         ).all()
     )
+
+def get_order_by_user(
+    db: Session,
+    user_id: uuid.UUID
+) -> list[Order]:
+    return list(
+        db.scalars(
+            select(Order).where(
+                Order.user_id == user_id
+            )
+            .order_by(
+                Order.created_at.desc()
+            )
+        ).all()
+    )

@@ -7,11 +7,13 @@ from app.schemas import (
     OrderCreateRequest,
     OrderItemResponse,
     OrderResponse,
+    OrderSummaryResponse
 )
 from app.services.order_service import (
     create_order,
     get_order,
-    get_order_items
+    get_order_items,
+    get_order_by_user
     )
 
 router = APIRouter(
@@ -99,4 +101,17 @@ def get_order_endpoint(
             OrderItemResponse.model_validate(item)
             for item in items
         ],
+    )
+
+@router.get(
+    "",
+    response_model=list[OrderSummaryResponse],
+)
+def list_orders_endpoint(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    return get_order_by_user(
+        db=db,
+        user_id=user_id,
     )

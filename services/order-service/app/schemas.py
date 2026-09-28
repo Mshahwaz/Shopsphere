@@ -56,3 +56,6 @@ class OrderSummaryResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class OrderStatusUpdateRequest(BaseModel):
+    status: str

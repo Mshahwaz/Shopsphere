@@ -9,6 +9,7 @@ from app.schemas import (
 )
 from app.models import Order, OrderItem
 
+
 def create_order(
     db: Session,
     request: OrderCreateRequest
@@ -98,3 +99,65 @@ def get_order_by_user(
             )
         ).all()
     )
+
+
+VALID_ORDER_STATUSES = {
+    "PENDING",
+    "CONFIRMED",
+    "PAYMENT_FAILED",
+    "CANCELLED",
+}
+
+ALLOWED_STATUS_TRANSITIONS = {
+    "PENDING": {
+        "CONFIRMED",
+        "PAYMENT_FAILED",
+        "CANCELLED",
+    },
+    "CONFIRMED": set(),
+    "PAYMENT_FAILED": set(),
+    "CANCELLED": set(),
+}
+
+
+def update_order_status(
+    db: Session,
+    order_id: uuid.UUID,
+    new_status: str,
+) -> Order | None:
+
+    if new_status not in VALID_ORDER_STATUSES:
+        raise ValueError(
+            "Invalid order status"
+        )
+
+    order = db.scalar(
+        select(Order).where(
+            Order.id == order_id
+        )
+    )
+
+    if order is None:
+        return None
+
+    allowed_statuses = ALLOWED_STATUS_TRANSITIONS.get(
+        order.status,
+        set(),
+    )
+
+    if new_status not in allowed_statuses:
+        raise ValueError(
+            f"Cannot change order status "
+            f"from {order.status} to {new_status}"
+        )
+
+    order.status = new_status
+
+    try:
+        db.commit()
+        db.refresh(order)
+    except Exception:
+        db.rollback()
+        raise
+
+    return order

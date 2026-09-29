@@ -18,11 +18,19 @@ from app.services.order_service import (
     update_order_status
     )
 
+from app.clients.exceptions import (
+    ProductNotFoundError,
+    ProductServiceError,
+    ProductServiceTimeoutError,
+    ProductServiceUnavailableError,
+)
+
 router = APIRouter(
     prefix="/api/v1/orders",
     tags=["Orders"],
 )
 
+## ------ Create Order Endpoint
 @router.post(
     "",
     response_model=OrderResponse,
@@ -32,12 +40,36 @@ def create_order_endpoint(
     request: OrderCreateRequest,
     db: Session = Depends(get_db),
 ):
-    order = create_order(
-        db=db,
-        request=request,
-    )
+    try:
+        order = create_order(
+            db=db,
+            request=request,
+        )
 
-    # Retrieve the items belonging to this order.
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+
+    except ProductServiceTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(exc),
+        )
+
+    except ProductServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+
+    except ProductServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        )
+
     items = [
         OrderItemResponse.model_validate(item)
         for item in order_items_for_response(
@@ -53,7 +85,7 @@ def create_order_endpoint(
         total_amount=order.total_amount,
         items=items,
     )
-
+    
 def order_items_for_response(
     db: Session,
     order_id,

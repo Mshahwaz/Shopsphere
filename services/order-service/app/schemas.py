@@ -7,13 +7,6 @@ from pydantic import BaseModel, Field
 
 class OrderItemCreateRequest(BaseModel):
     product_id: uuid.UUID
-    product_name: str = Field(
-        min_length=1,
-        max_length=255,
-    )
-    unit_price: Decimal = Field(
-        gt=0,
-    )
     quantity: int = Field(
         gt=0,
     )

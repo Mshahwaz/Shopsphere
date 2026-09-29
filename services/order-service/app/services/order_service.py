@@ -8,7 +8,7 @@ from app.schemas import (
     OrderCreateRequest,
 )
 from app.models import Order, OrderItem
-
+from app.clients.product_client import get_product
 
 def create_order(
     db: Session,
@@ -30,17 +30,21 @@ def create_order(
 
         for item in request.items:
 
-            item_total = (
-                item.unit_price * item.quantity
-            )
+            # Get authoritative product information
+            product = get_product(item.product_id)
+
+            product_name = product["name"]
+            unit_price = Decimal(str(product["price"]))
+
+            item_total = unit_price * item.quantity
 
             total_amount += item_total
 
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=item.product_id,
-                product_name=item.product_name,
-                unit_price=item.unit_price,
+                product_name=product_name,
+                unit_price=unit_price,
                 quantity=item.quantity,
             )
 

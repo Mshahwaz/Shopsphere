@@ -16,3 +16,6 @@ class PaymentResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class PaymentStatusUpdateRequest(BaseModel):
+    status: str

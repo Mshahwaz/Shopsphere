@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     database_user: str
     database_password: str
 
+    product_service_url: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

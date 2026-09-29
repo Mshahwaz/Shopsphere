@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.routes.orders import router as orders_router
+from app.routes.service_test import router as service_test_router
 from app.database import engine
 from sqlalchemy import text
 
@@ -12,6 +13,7 @@ app = FastAPI(
 
 
 app.include_router(orders_router)
+app.include_router(service_test_router)
 
 @app.get("/health")
 def health_check():

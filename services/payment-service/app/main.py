@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.database import engine
+from app.routes.payments import router as payments_router
 
 
 app = FastAPI(
@@ -9,6 +10,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
+app.include_router(payments_router)
 
 @app.get("/health")
 def health_check():

@@ -23,6 +23,11 @@ from app.clients.exceptions import (
     ProductServiceError,
     ProductServiceTimeoutError,
     ProductServiceUnavailableError,
+    InsufficientStockError,
+    InventoryNotFoundError,
+    InventoryServiceError,
+    InventoryServiceTimeoutError,
+    InventoryServiceUnavailableError
 )
 
 router = APIRouter(
@@ -69,7 +74,35 @@ def create_order_endpoint(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         )
+    except InventoryNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
 
+    except InsufficientStockError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        )
+
+    except InventoryServiceTimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=str(exc),
+        )
+
+    except InventoryServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
+
+    except InventoryServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        )
     items = [
         OrderItemResponse.model_validate(item)
         for item in order_items_for_response(

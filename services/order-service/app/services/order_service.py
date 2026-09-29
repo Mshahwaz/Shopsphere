@@ -9,6 +9,7 @@ from app.schemas import (
 )
 from app.models import Order, OrderItem
 from app.clients.product_client import get_product
+from app.clients.inventory_client import reserve_stock
 
 def create_order(
     db: Session,
@@ -29,15 +30,17 @@ def create_order(
         order_items = []
 
         for item in request.items:
-
-            # Get authoritative product information
             product = get_product(item.product_id)
 
             product_name = product["name"]
             unit_price = Decimal(str(product["price"]))
 
-            item_total = unit_price * item.quantity
+            reserve_stock(
+                product_id=item.product_id,
+                quantity=item.quantity,
+            )
 
+            item_total = unit_price * item.quantity
             total_amount += item_total
 
             order_item = OrderItem(

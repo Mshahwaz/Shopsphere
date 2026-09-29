@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_password: str
 
     product_service_url: str
+    inventory_service_url: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

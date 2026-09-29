@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Payment
-from app.schemas import PaymentCreateRequest
+from app.schemas import PaymentCreateRequest, PaymentProcessRequest
 
 
 VALID_PAYMENT_STATUSES = {
@@ -92,6 +92,40 @@ def update_payment_status(
         )
 
     payment.status = new_status
+
+    try:
+        db.commit()
+        db.refresh(payment)
+    except Exception:
+        db.rollback()
+        raise
+
+    return payment
+
+def process_payment(
+    db: Session,
+    payment_id: uuid.UUID,
+    request: PaymentProcessRequest,
+) -> Payment | None:
+
+    payment = db.scalar(
+        select(Payment).where(
+            Payment.id == payment_id
+        )
+    )
+
+    if payment is None:
+        return None
+
+    if payment.status != "PENDING":
+        raise ValueError(
+            f"Cannot process payment from status {payment.status}"
+        )
+    payment.status = "PROCESSING"
+
+    db.flush()
+
+    payment.status = request.outcome
 
     try:
         db.commit()

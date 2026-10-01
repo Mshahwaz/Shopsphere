@@ -9,7 +9,16 @@ from app.schemas import (
 )
 from app.models import Order, OrderItem
 from app.clients.product_client import get_product
-from app.clients.inventory_client import reserve_stock
+from app.clients.inventory_client import (
+    reserve_stock,
+    release_stock,
+    reduce_stock
+)
+from app.clients.payment_client import (
+    create_payment,
+    process_payment,
+)
+from app.clients.exceptions import PaymentFailedError
 
 def create_order(
     db: Session,
@@ -30,11 +39,13 @@ def create_order(
         order_items = []
 
         for item in request.items:
-            product = get_product(item.product_id)
 
+            # 1. Product Service
+            product = get_product(item.product_id)
             product_name = product["name"]
             unit_price = Decimal(str(product["price"]))
 
+            # 2. Inventory Service
             reserve_stock(
                 product_id=item.product_id,
                 quantity=item.quantity,
@@ -54,19 +65,71 @@ def create_order(
             db.add(order_item)
             order_items.append(order_item)
 
+        # 3. Persist Pending Order
         order.total_amount = total_amount
 
         db.commit()
         db.refresh(order)
-
         for order_item in order_items:
             db.refresh(order_item)
-
-        return order
-
+    
     except Exception:
         db.rollback()
         raise
+
+    # 5. Create payment
+    payment = create_payment(
+        order_id=order.id,
+        amount=order.total_amount,
+    )
+
+    # 6. Process payment
+    try:
+        payment_result = process_payment(
+            payment_id=payment["id"],
+        )
+
+    except PaymentFailedError:
+
+        # Payment is known to have failed.
+        # Release all inventory reservations.
+        try:
+            for order_item in order_items:
+                release_stock(
+                    product_id=order_item.product_id,
+                    quantity=order_item.quantity,
+                )
+
+        except Exception:
+            # Compensation failed.
+            # Keep the order pending so that we do not falsely
+            # claim that the inventory was successfully released.
+            raise
+
+        order.status = "PAYMENT_FAILED"
+
+        db.commit()
+        db.refresh(order)
+
+        raise
+
+    # 7. Confirm order
+    if payment_result["status"] == "SUCCESS":
+
+        # Payment succeeded, so finalize the inventory reservation.
+        for order_item in order_items:
+            reduce_stock(
+                product_id=order_item.product_id,
+                quantity=order_item.quantity,
+            )
+
+        order.status = "CONFIRMED"
+
+        db.commit()
+        db.refresh(order)
+
+    return order
+
 
 def get_order(
     db: Session,

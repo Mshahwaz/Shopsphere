@@ -27,7 +27,12 @@ from app.clients.exceptions import (
     InventoryNotFoundError,
     InventoryServiceError,
     InventoryServiceTimeoutError,
-    InventoryServiceUnavailableError
+    InventoryServiceUnavailableError,
+    PaymentFailedError,
+    PaymentNotFoundError,
+    PaymentServiceTimeoutError,
+    PaymentServiceUnavailableError,
+    PaymentServiceError
 )
 
 router = APIRouter(
@@ -101,6 +106,34 @@ def create_order_endpoint(
     except InventoryServiceError as exc:
         raise HTTPException(
             status_code=502,
+            detail=str(exc),
+        )
+    except PaymentFailedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=str(exc),
+        )
+    except PaymentNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        )
+
+    except PaymentServiceTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(exc),
+        )
+
+    except PaymentServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+
+    except PaymentServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         )
     items = [

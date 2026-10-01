@@ -13,7 +13,7 @@ from app.schemas import (
     PaymentCreateRequest,
     PaymentResponse,
     PaymentStatusUpdateRequest,
-    PaymentProcessRequest
+    # PaymentProcessRequest
 )
 from app.services.payment_service import create_payment, update_payment_status, process_payment
 
@@ -78,14 +78,12 @@ def update_payment_status_endpoint(
 )
 def process_payment_endpoint(
     payment_id: uuid.UUID,
-    request: PaymentProcessRequest,
     db: Session = Depends(get_db),
 ):
     try:
         payment = process_payment(
             db=db,
             payment_id=payment_id,
-            request=request,
         )
     except ValueError as exc:
         raise HTTPException(

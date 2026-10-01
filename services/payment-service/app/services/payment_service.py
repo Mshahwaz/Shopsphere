@@ -4,8 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Payment
-from app.schemas import PaymentCreateRequest, PaymentProcessRequest
+from app.schemas import PaymentCreateRequest
+from app.providers.mock import MockPaymentProvider
 
+payment_provider =  MockPaymentProvider()
 
 VALID_PAYMENT_STATUSES = {
     "PENDING",
@@ -105,7 +107,6 @@ def update_payment_status(
 def process_payment(
     db: Session,
     payment_id: uuid.UUID,
-    request: PaymentProcessRequest,
 ) -> Payment | None:
 
     payment = db.scalar(
@@ -121,11 +122,22 @@ def process_payment(
         raise ValueError(
             f"Cannot process payment from status {payment.status}"
         )
+
     payment.status = "PROCESSING"
 
     db.flush()
 
-    payment.status = request.outcome
+    result = payment_provider.process_payment(
+        payment_id=str(payment.id),
+        amount=payment.amount,
+    )
+
+    if result not in {"SUCCESS", "FAILED"}:
+        raise ValueError(
+            f"Invalid payment provider result: {result}"
+        )
+
+    payment.status = result
 
     try:
         db.commit()

@@ -1,6 +1,6 @@
 import uuid
 from decimal import Decimal
-from typing import Literal
+# from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,5 +21,5 @@ class PaymentResponse(BaseModel):
 class PaymentStatusUpdateRequest(BaseModel):
     status: str
 
-class PaymentProcessRequest(BaseModel):
-    outcome: Literal["SUCCESS", "FAILED"]
+# class PaymentProcessRequest(BaseModel):
+#     outcome: Literal["SUCCESS", "FAILED"]

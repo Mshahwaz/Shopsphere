@@ -2,9 +2,16 @@ from fastapi import HTTPException, APIRouter, status, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import UserRegisterRequest, UserResponse
-from app.services.auth_service import register_user
-
+from app.schemas import (
+    UserRegisterRequest,
+    UserResponse,
+    UserLoginRequest,
+    TokenResponse
+)
+from app.services.auth_service import (
+    register_user,
+    authenticate_user
+)
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -32,3 +39,26 @@ def register(
             detail=str(exc)
         )
     return user
+
+@router.post("/login", response_model=TokenResponse)
+def login(
+    request: UserLoginRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        access_token = authenticate_user(
+            db,
+            request.email,
+            request.password,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+    )

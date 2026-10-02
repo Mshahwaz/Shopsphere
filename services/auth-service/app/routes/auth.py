@@ -10,8 +10,9 @@ from app.schemas import (
 )
 from app.services.auth_service import (
     register_user,
-    authenticate_user
+    authenticate_user,
 )
+from app.security import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -62,3 +63,9 @@ def login(
         access_token=access_token,
         token_type="bearer",
     )
+
+@router.get("/me")
+def get_authenticated_user(
+    current_user: dict = Depends(get_current_user),
+):
+    return current_user

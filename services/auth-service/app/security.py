@@ -3,7 +3,6 @@ from pwdlib import PasswordHash
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from app.config import settings
 
 password_hash=PasswordHash.recommended()
@@ -76,3 +75,16 @@ def get_current_user(
         "user_id": user_id,
         "role" : role
     }
+
+def require_role(required_role: str):
+    def role_checker(
+        current_user: dict = Depends(get_current_user),
+    ):
+        if current_user["role"] != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions"
+            )
+        return current_user
+    
+    return role_checker

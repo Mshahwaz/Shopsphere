@@ -12,7 +12,7 @@ from app.services.auth_service import (
     register_user,
     authenticate_user,
 )
-from app.security import get_current_user
+from app.security import get_current_user, require_role
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -69,3 +69,14 @@ def get_authenticated_user(
     current_user: dict = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.get("/admin-test")
+def admin_test(
+    current_user: dict = Depends(require_role("ADMIN")),
+):
+
+    return {
+        "message": "Admin Access granted",
+        "user": current_user
+    }

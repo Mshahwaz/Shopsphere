@@ -15,6 +15,7 @@ from app.services.product_service import (
     get_category_by_id
 )
 
+from app.security import require_role
 
 router=APIRouter(
     prefix="/api/v1/categories",
@@ -29,7 +30,8 @@ router=APIRouter(
     )
 def create_category_endpoint(
     request: CategoryCreateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_role("ADMIN")),
     ):
 
     try:

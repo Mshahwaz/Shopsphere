@@ -17,7 +17,7 @@ from app.services.product_service import (
     update_product,
     update_product_status
 )
-
+from app.security import require_role
 
 router=APIRouter(
     prefix="/api/v1/products",
@@ -31,7 +31,8 @@ router=APIRouter(
 )
 def create_product_endpoint(
     request: ProductCreateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_role("ADMIN"))
     ):
 
     return create_product(
@@ -78,7 +79,8 @@ def list_products(
 def update_product_endpoint(
     product_id: uuid.UUID,
     request: ProductUpdateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_role("ADMIN")),
     ):
 
     product=update_product(
@@ -101,7 +103,8 @@ def update_product_endpoint(
 def update_product_status_endpoint(
     product_id: uuid.UUID,
     request: ProductStatusUpdateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_role("ADMIN")),
     ):
     product=update_product_status(
         db=db,

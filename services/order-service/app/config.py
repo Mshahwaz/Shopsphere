@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     product_service_url: str
     inventory_service_url: str
     payment_service_url: str
+    inventory_service_auth_token: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -11,6 +11,10 @@ from app.clients.exceptions import (
     InventoryServiceUnavailableError
 )
 
+SERVICE_HEADERS = {
+    "X-Service-Token" : settings.inventory_service_auth_token,
+}
+
 def reserve_stock(
     product_id: uuid.UUID,
     quantity: int,
@@ -25,6 +29,7 @@ def reserve_stock(
         response = httpx.post(
             url,
             json={"quantity": quantity},
+            headers=SERVICE_HEADERS,
             timeout=5.0,
         )
 
@@ -75,6 +80,7 @@ def release_stock(
         response = httpx.post(
             url,
             json=payload,
+            headers=SERVICE_HEADERS,
             timeout=5.0,
         )
 
@@ -134,6 +140,7 @@ def reduce_stock(
         response = httpx.post(
             url=url,
             json=payload,
+            headers=SERVICE_HEADERS,
             timeout=5.0
         )
 

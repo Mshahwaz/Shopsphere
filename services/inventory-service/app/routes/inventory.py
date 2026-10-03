@@ -18,7 +18,7 @@ from app.services.inventory_service import (
     release_stock,
     reduce_reserved_stock
     )
-
+from app.security import verify_service_token
 
 router = APIRouter(
     prefix="/api/v1/inventory",
@@ -35,6 +35,7 @@ def add_stock_endpoint(
     product_id: uuid.UUID,
     request: StockUpdateRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     return add_stock(
         db=db,
@@ -71,6 +72,7 @@ def reserve_stock_endpoint(
     product_id: uuid.UUID,
     request: ReservationRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         inventory = reserve_stock(
@@ -100,6 +102,7 @@ def release_stock_endpoint(
     product_id: uuid.UUID,
     request: ReleaseRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         inventory = release_stock(
@@ -129,6 +132,7 @@ def reduce_stock_endpoint(
     product_id: uuid.UUID,
     request: StockReductionRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         inventory = reduce_reserved_stock(

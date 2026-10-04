@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
 
+    service_auth_token: str
+
     model_config= SettingsConfigDict(
         env_file=".env",
         extra="ignore"

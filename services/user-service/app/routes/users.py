@@ -2,9 +2,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas import UserResponse,UserUpdateRequest
-from app.services.user_service import get_user_by_auth_id, update_user
-from app.security import get_current_user 
+from app.schemas import (
+    UserResponse,
+    UserUpdateRequest,
+    UserCretaeInternalRequest,
+)
+from app.services.user_service import (
+    get_user_by_auth_id,
+    update_user,
+    create_user_profile
+)
+from app.security import get_current_user,verify_service_token
 
 router=APIRouter(
     prefix="/api/v1/users",
@@ -51,3 +59,18 @@ def update_my_profile(
         )
 
     return user
+
+@router.post(
+    "/internal",
+    response_model=UserResponse,
+    dependencies=[Depends(verify_service_token)],
+    status_code=status.HTTP_201_CREATED
+    )
+def create_profile(
+    request: UserCretaeInternalRequest,
+    db: Session = Depends(get_db),
+):
+    return create_user_profile(
+        db=db,
+        auth_user_id=request.auth_user_id
+    )

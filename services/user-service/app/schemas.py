@@ -17,3 +17,6 @@ class UserUpdateRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
+
+class UserCretaeInternalRequest(BaseModel):
+    auth_user_id: uuid.UUID

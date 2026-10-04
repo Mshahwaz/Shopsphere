@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from app.models import AuthUser
 from app.security import hash_password,verify_password,create_access_token
 
+from app.clients.user_client import create_user_profile
+import logging
+
+logger=logging.getLogger(__name__)
 
 def register_user(
     db: Session,
@@ -28,11 +32,30 @@ def register_user(
         db.add(user)
         db.commit()
         db.refresh(user)
+
+        create_user_profile(str(user.id))
+
     except Exception:
         db.rollback()
+
+        try:
+            delete_user(db=db,user=user)
+        except Exception:
+            db.rollback()
+            logger.exception(
+            "Failed to compensate AuthUser %s after User profile creation failed",
+            user.id,
+            )
         raise
     
     return user
+
+def delete_user(
+    db: Session,
+    user: AuthUser
+) -> None:
+    db.delete(user)
+    db.commit()
 
 def authenticate_user(
     db: Session,

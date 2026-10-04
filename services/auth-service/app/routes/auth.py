@@ -13,6 +13,7 @@ from app.services.auth_service import (
     authenticate_user,
 )
 from app.security import get_current_user, require_role
+from app.clients.user_client import UserProfileCreationException
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -33,6 +34,11 @@ def register(
             db,
             email=request.email,
             password=request.password,
+        )
+    except UserProfileCreationException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to complete registration because the user profile service is unavailable"
         )
     except ValueError as exc:
         raise HTTPException(

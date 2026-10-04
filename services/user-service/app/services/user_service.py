@@ -41,3 +41,18 @@ def update_user(
     db.refresh(user)
 
     return user
+
+def create_user_profile(
+    db: Session,
+    auth_user_id: uuid.UUID,
+) -> User:
+
+    user = User(
+        auth_user_id = auth_user_id,
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user

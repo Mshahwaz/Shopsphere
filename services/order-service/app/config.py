@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     payment_service_url: str
     inventory_service_auth_token: str
 
+    jwt_secret: str
+    jwt_algorithm: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

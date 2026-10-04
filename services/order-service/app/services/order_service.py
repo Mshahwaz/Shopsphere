@@ -22,13 +22,14 @@ from app.clients.exceptions import PaymentFailedError
 
 def create_order(
     db: Session,
-    request: OrderCreateRequest
+    request: OrderCreateRequest,
+    user_id: uuid.UUID,
 ) -> Order:
     
     total_amount = Decimal("0.00")
 
     order = Order(
-        user_id= request.user_id,
+        user_id= user_id,
         status="PENDING",
         total_amount=Decimal("0.00"),
     )
@@ -140,6 +141,17 @@ def get_order(
             Order.id == order_id
         )
     )
+def get_order_for_user(
+    db: Session,
+    order_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Order | None:
+    return db.scalar(
+        select(Order).where(
+            Order.id == order_id,
+            Order.user_id == user_id,
+        )
+    )
 
 def get_order_items(
     db: Session,
@@ -193,6 +205,7 @@ ALLOWED_STATUS_TRANSITIONS = {
 def update_order_status(
     db: Session,
     order_id: uuid.UUID,
+    user_id: uuid.UUID,
     new_status: str,
 ) -> Order | None:
 
@@ -203,7 +216,8 @@ def update_order_status(
 
     order = db.scalar(
         select(Order).where(
-            Order.id == order_id
+            Order.id == order_id,
+            Order.user_id == user_id,
         )
     )
 
@@ -226,6 +240,7 @@ def update_order_status(
     try:
         db.commit()
         db.refresh(order)
+
     except Exception:
         db.rollback()
         raise

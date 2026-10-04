@@ -1,4 +1,5 @@
 import uuid
+
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
@@ -8,15 +9,16 @@ from app.schemas import (
     OrderItemResponse,
     OrderResponse,
     OrderSummaryResponse,
-    OrderStatusUpdateRequest
+    OrderStatusUpdateRequest,
 )
+
 from app.services.order_service import (
     create_order,
-    get_order,
+    get_order_for_user,
     get_order_items,
     get_order_by_user,
-    update_order_status
-    )
+    update_order_status,
+)
 
 from app.clients.exceptions import (
     ProductNotFoundError,
@@ -32,15 +34,22 @@ from app.clients.exceptions import (
     PaymentNotFoundError,
     PaymentServiceTimeoutError,
     PaymentServiceUnavailableError,
-    PaymentServiceError
+    PaymentServiceError,
 )
+
+from app.security import get_current_user
+
 
 router = APIRouter(
     prefix="/api/v1/orders",
     tags=["Orders"],
 )
 
-## ------ Create Order Endpoint
+
+# ---------------------------------------------------------
+# Create Order
+# ---------------------------------------------------------
+
 @router.post(
     "",
     response_model=OrderResponse,
@@ -48,12 +57,16 @@ router = APIRouter(
 )
 def create_order_endpoint(
     request: OrderCreateRequest,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    user_id = uuid.UUID(current_user["user_id"])
+
     try:
         order = create_order(
             db=db,
             request=request,
+            user_id=user_id,
         )
 
     except ProductNotFoundError as exc:
@@ -79,40 +92,43 @@ def create_order_endpoint(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         )
+
     except InventoryNotFoundError as exc:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         )
 
     except InsufficientStockError as exc:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         )
 
     except InventoryServiceTimeoutError as exc:
         raise HTTPException(
-            status_code=504,
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail=str(exc),
         )
 
     except InventoryServiceUnavailableError as exc:
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         )
 
     except InventoryServiceError as exc:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         )
+
     except PaymentFailedError as exc:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=str(exc),
         )
+
     except PaymentNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -136,6 +152,7 @@ def create_order_endpoint(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         )
+
     items = [
         OrderItemResponse.model_validate(item)
         for item in order_items_for_response(
@@ -151,13 +168,17 @@ def create_order_endpoint(
         total_amount=order.total_amount,
         items=items,
     )
-    
+
+
+# ---------------------------------------------------------
+# Helper: Order Items
+# ---------------------------------------------------------
+
 def order_items_for_response(
     db: Session,
     order_id,
 ):
     from sqlalchemy import select
-
     from app.models import OrderItem
 
     return db.scalars(
@@ -168,17 +189,26 @@ def order_items_for_response(
         .order_by(OrderItem.created_at)
     ).all()
 
+
+# ---------------------------------------------------------
+# Get Single Order
+# ---------------------------------------------------------
+
 @router.get(
     "/{order_id}",
     response_model=OrderResponse,
 )
 def get_order_endpoint(
     order_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    order = get_order(
+    user_id = uuid.UUID(current_user["user_id"])
+
+    order = get_order_for_user(
         db=db,
         order_id=order_id,
+        user_id=user_id,
     )
 
     if order is None:
@@ -203,18 +233,30 @@ def get_order_endpoint(
         ],
     )
 
+
+# ---------------------------------------------------------
+# List Current User's Orders
+# ---------------------------------------------------------
+
 @router.get(
     "",
     response_model=list[OrderSummaryResponse],
 )
 def list_orders_endpoint(
-    user_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    user_id = uuid.UUID(current_user["user_id"])
+
     return get_order_by_user(
         db=db,
         user_id=user_id,
     )
+
+
+# ---------------------------------------------------------
+# Update Order Status
+# ---------------------------------------------------------
 
 @router.patch(
     "/{order_id}/status",
@@ -223,14 +265,19 @@ def list_orders_endpoint(
 def update_order_status_endpoint(
     order_id: uuid.UUID,
     request: OrderStatusUpdateRequest,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    user_id = uuid.UUID(current_user["user_id"])
+
     try:
         order = update_order_status(
             db=db,
             order_id=order_id,
+            user_id=user_id,
             new_status=request.status,
         )
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

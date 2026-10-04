@@ -13,7 +13,6 @@ class OrderItemCreateRequest(BaseModel):
 
 
 class OrderCreateRequest(BaseModel):
-    user_id: uuid.UUID
     items: list[OrderItemCreateRequest] = Field(
         min_length=1,
     )

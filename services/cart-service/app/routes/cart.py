@@ -18,6 +18,7 @@ from app.services.cart_service import (
     clear_cart
     )
 
+from app.security import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/cart",
@@ -27,12 +28,15 @@ router = APIRouter(
 @router.post(
     "/items",
     response_model=CartItemResponse,
+    status_code=status.HTTP_201_CREATED
 )
 def add_cart_item(
     request: CartItemCreateRequest,
-    user_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    user_id = uuid.UUID(current_user["user_id"])
+
     return add_item_to_cart(
         db=db,
         user_id=user_id,
@@ -40,28 +44,30 @@ def add_cart_item(
         quantity=request.quantity,
     )
 
-@router.get("",response_model=CartResponse)
+@router.get("", response_model=CartResponse)
 def get_cart_endpoint(
-    user_id: uuid.UUID,
-    db:Session = Depends(get_db)
-    ):
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = uuid.UUID(current_user["user_id"])
+
     result = get_cart(
         db=db,
-        user_id=user_id
+        user_id=user_id,
     )
 
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cart not found"
+            detail="Cart not found",
         )
-    
+
     cart, items = result
 
     return CartResponse(
         id=cart.id,
         user_id=cart.user_id,
-        items=items
+        items=items,
     )
 
 @router.patch(
@@ -70,11 +76,13 @@ def get_cart_endpoint(
 )
 def update_cart_item_quantity_endpoint(
     product_id: uuid.UUID,
-    user_id: uuid.UUID,
     request: CartItemUpdateRequest,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    cart_item=update_cart_item_quantity(
+    user_id = uuid.UUID(current_user["user_id"])
+
+    cart_item = update_cart_item_quantity(
         db=db,
         user_id=user_id,
         product_id=product_id,
@@ -91,40 +99,44 @@ def update_cart_item_quantity_endpoint(
 
 @router.delete(
     "/items/{product_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 def remove_cart_item_endpoint(
     product_id: uuid.UUID,
-    user_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    removed=remove_cart_item(
+    user_id = uuid.UUID(current_user["user_id"])
+
+    removed = remove_cart_item(
         db=db,
         user_id=user_id,
-        product_id=product_id
+        product_id=product_id,
     )
 
     if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cart Item not found"
+            detail="Cart Item not found",
         )
 
 @router.delete(
     "",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 def clear_cart_endpoint(
-    user_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
+    user_id = uuid.UUID(current_user["user_id"])
+
     cleared = clear_cart(
         db=db,
-        user_id=user_id
+        user_id=user_id,
     )
 
     if not cleared:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cart Not Found"
+            detail="Cart Not Found",
         )

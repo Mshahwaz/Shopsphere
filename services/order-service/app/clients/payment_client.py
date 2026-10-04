@@ -10,6 +10,10 @@ from app.clients.exceptions import (
     PaymentServiceError,
 )
 
+SERVICE_HEADERS = {
+    "X-SERVICE-TOKEN": settings.payment_service_auth_token
+}
+
 def create_payment(order_id: uuid.UUID, amount):
     url = f"{settings.payment_service_url}/api/v1/payments"
 
@@ -20,6 +24,7 @@ def create_payment(order_id: uuid.UUID, amount):
                 "order_id": str(order_id),
                 "amount": str(amount),
             },
+            headers=SERVICE_HEADERS,
             timeout=5.0,
         )
 
@@ -57,6 +62,7 @@ def process_payment(payment_id: uuid.UUID):
     try:
         response = httpx.post(
             url,
+            headers=SERVICE_HEADERS,
             timeout=5.0,
         )
 

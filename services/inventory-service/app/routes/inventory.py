@@ -35,7 +35,6 @@ def add_stock_endpoint(
     product_id: uuid.UUID,
     request: StockUpdateRequest,
     db: Session = Depends(get_db),
-    _: bool = Depends(verify_service_token),
 ):
     return add_stock(
         db=db,

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     inventory_service_url: str
     payment_service_url: str
     inventory_service_auth_token: str
+    payment_service_auth_token: str
 
     jwt_secret: str
     jwt_algorithm: str

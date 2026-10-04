@@ -16,6 +16,7 @@ from app.schemas import (
     # PaymentProcessRequest
 )
 from app.services.payment_service import create_payment, update_payment_status, process_payment
+from app.security import verify_service_token
 
 router = APIRouter(
     prefix="/api/v1/payments",
@@ -30,6 +31,7 @@ router = APIRouter(
 def create_payment_endpoint(
     request: PaymentCreateRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         return create_payment(
@@ -51,6 +53,7 @@ def update_payment_status_endpoint(
     payment_id: uuid.UUID,
     request: PaymentStatusUpdateRequest,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         payment = update_payment_status(
@@ -79,6 +82,7 @@ def update_payment_status_endpoint(
 def process_payment_endpoint(
     payment_id: uuid.UUID,
     db: Session = Depends(get_db),
+    _: bool = Depends(verify_service_token),
 ):
     try:
         payment = process_payment(

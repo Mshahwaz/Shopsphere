@@ -19,6 +19,13 @@ from app.services.cart_service import (
     )
 
 from app.security import get_current_user
+from app.clients.exceptions import (
+    ProductNotFoundError,
+    ProductServiceError,
+    ProductServiceTimeoutError,
+    ProductServiceUnavailableError
+)
+
 
 router = APIRouter(
     prefix="/api/v1/cart",
@@ -37,12 +44,42 @@ def add_cart_item(
 ):
     user_id = uuid.UUID(current_user["user_id"])
 
-    return add_item_to_cart(
-        db=db,
-        user_id=user_id,
-        product_id=request.product_id,
-        quantity=request.quantity,
-    )
+    try:
+        return add_item_to_cart(
+            db=db,
+            user_id=user_id,
+            product_id=request.product_id,
+            quantity=request.quantity,
+        )
+    except ProductNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
+
+    except ProductServiceTimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Product Service timed out",
+        )
+
+    except ProductServiceUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product Service is unavailable",
+        )
+
+    except ProductServiceError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Product Service returned an error",
+        )
 
 @router.get("", response_model=CartResponse)
 def get_cart_endpoint(

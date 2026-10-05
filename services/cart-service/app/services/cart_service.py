@@ -4,6 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Cart, CartItem
+from app.clients.product_client import get_product
+from app.clients.exceptions import ProductNotFoundError
 
 def get_or_create_cart(
     db: Session,
@@ -33,6 +35,16 @@ def add_item_to_cart(
     quantity: int,
 ) -> CartItem:
 
+    # 1: Validate product with product service
+    product = get_product(product_id=product_id)
+
+    # 2: Product must be active
+    if not product["is_active"]:
+        raise ValueError(
+            "Product is not available"
+        )
+
+    # 3: Only now Modify cart
     cart = get_or_create_cart(
         db=db,
         user_id=user_id,

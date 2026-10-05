@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     
+    product_service_url: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

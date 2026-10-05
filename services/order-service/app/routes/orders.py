@@ -9,7 +9,6 @@ from app.schemas import (
     OrderItemResponse,
     OrderResponse,
     OrderSummaryResponse,
-    OrderStatusUpdateRequest,
 )
 
 from app.services.order_service import (
@@ -17,7 +16,6 @@ from app.services.order_service import (
     get_order_for_user,
     get_order_items,
     get_order_by_user,
-    update_order_status,
 )
 
 from app.clients.exceptions import (
@@ -254,54 +252,3 @@ def list_orders_endpoint(
     )
 
 
-# ---------------------------------------------------------
-# Update Order Status
-# ---------------------------------------------------------
-
-@router.patch(
-    "/{order_id}/status",
-    response_model=OrderResponse,
-)
-def update_order_status_endpoint(
-    order_id: uuid.UUID,
-    request: OrderStatusUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    user_id = uuid.UUID(current_user["user_id"])
-
-    try:
-        order = update_order_status(
-            db=db,
-            order_id=order_id,
-            user_id=user_id,
-            new_status=request.status,
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        )
-
-    if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found",
-        )
-
-    items = get_order_items(
-        db=db,
-        order_id=order.id,
-    )
-
-    return OrderResponse(
-        id=order.id,
-        user_id=order.user_id,
-        status=order.status,
-        total_amount=order.total_amount,
-        items=[
-            OrderItemResponse.model_validate(item)
-            for item in items
-        ],
-    )

@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas import (
-    OrderCreateRequest,
     OrderItemResponse,
     OrderResponse,
     OrderSummaryResponse,
@@ -33,6 +32,11 @@ from app.clients.exceptions import (
     PaymentServiceTimeoutError,
     PaymentServiceUnavailableError,
     PaymentServiceError,
+    CartNotFoundError,
+    CartServiceError,
+    CartServiceTimeoutError,
+    CartServiceUnavailableError,
+    EmptyCartError,
 )
 
 from app.security import get_current_user
@@ -54,7 +58,6 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def create_order_endpoint(
-    request: OrderCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -63,10 +66,37 @@ def create_order_endpoint(
     try:
         order = create_order(
             db=db,
-            request=request,
             user_id=user_id,
         )
+    except EmptyCartError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
 
+    except CartNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+
+    except CartServiceTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(exc),
+        )
+
+    except CartServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+
+    except CartServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        )
     except ProductNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

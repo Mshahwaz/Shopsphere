@@ -25,11 +25,16 @@ from app.clients.exceptions import (
     ProductServiceTimeoutError,
     ProductServiceUnavailableError
 )
-
+from app.security import get_current_user, verify_service_token
 
 router = APIRouter(
     prefix="/api/v1/cart",
     tags=["Cart"],
+)
+
+internal_router = APIRouter(
+    prefix="/api/v1/internal",
+    tags=["Internal"],
 )
 
 @router.post(
@@ -176,4 +181,52 @@ def clear_cart_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart Not Found",
+        )
+
+@internal_router.get(
+    "/cart/{user_id}",
+    response_model=CartResponse,
+)
+def get_internal_cart(
+    user_id: uuid.UUID,
+    _: None = Depends(verify_service_token),
+    db: Session = Depends(get_db),
+):
+    result = get_cart(
+        db=db,
+        user_id=user_id,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Cart not found",
+        )
+
+    cart, items = result
+
+    return CartResponse(
+        id=cart.id,
+        user_id=cart.user_id,
+        items=items,
+    )
+
+@internal_router.delete(
+    "/cart/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def clear_internal_cart(
+    user_id: uuid.UUID,
+    _: None = Depends(verify_service_token),
+    db: Session = Depends(get_db),
+):
+    cleared = clear_cart(
+        db=db,
+        user_id=user_id,
+    )
+
+    if not cleared:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found",
         )

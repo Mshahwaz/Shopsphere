@@ -1,6 +1,6 @@
 import jwt
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
@@ -48,3 +48,12 @@ def get_current_user(
         "user_id": user_id,
         "role": payload.get("role"),
     }
+
+def verify_service_token(
+    x_service_token: str | None = Header(default=None),
+):
+    if x_service_token != settings.cart_service_auth_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid service token",
+        )

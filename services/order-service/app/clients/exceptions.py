@@ -50,3 +50,21 @@ class PaymentServiceTimeoutError(Exception):
 
 class PaymentServiceError(Exception):
     pass
+
+class CartNotFoundError(Exception):
+    pass
+
+
+class CartServiceUnavailableError(Exception):
+    pass
+
+
+class CartServiceTimeoutError(Exception):
+    pass
+
+
+class CartServiceError(Exception):
+    pass
+
+class EmptyCartError(Exception):
+    pass

@@ -4,20 +4,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
-class OrderItemCreateRequest(BaseModel):
-    product_id: uuid.UUID
-    quantity: int = Field(
-        gt=0,
-    )
-
-
-class OrderCreateRequest(BaseModel):
-    items: list[OrderItemCreateRequest] = Field(
-        min_length=1,
-    )
-
-
 class OrderItemResponse(BaseModel):
     id: uuid.UUID
     order_id: uuid.UUID

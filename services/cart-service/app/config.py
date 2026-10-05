@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     
     product_service_url: str
-
+    cart_service_auth_token: str
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

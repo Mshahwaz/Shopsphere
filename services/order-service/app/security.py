@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
-
+from jwt.exceptions import InvalidTokenError
 from app.config import settings
 
 
@@ -21,7 +21,7 @@ def get_current_user(
             algorithms=[settings.jwt_algorithm],
         )
 
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

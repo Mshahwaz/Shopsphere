@@ -78,7 +78,4 @@ def authenticate_user(
     if not verify_password(password,user.password_hash):
         raise ValueError("Invalid email and password")
 
-    return create_access_token(
-        user_id=str(user.id),
-        role=user.role
-    )
+    return user

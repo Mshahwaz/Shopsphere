@@ -14,7 +14,13 @@ class Settings(BaseSettings):
     
     user_service_url: str
     user_service_auth_token: str
-    
+
+    refresh_token_expire_days: int = 7
+    refresh_token_cookie_name: str = "refresh_token"
+    refresh_token_cookie_secure: bool = False
+    refresh_token_cookie_httponly: bool = True
+    refresh_token_cookie_samesite: str = "lax"
+
     model_config= SettingsConfigDict(
         env_file=".env",
         extra="ignore"

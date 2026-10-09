@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from sqlalchemy.orm import Session
 
-from app.models import Order, OrderItem
+from app.models import Order, OrderItem, OutboxEvent
 from app.clients.product_client import get_product
 from app.clients.inventory_client import (
     reserve_stock,
@@ -177,6 +177,7 @@ def create_order(
         raise
 
     # 7. Confirm order
+# 7. Confirm order
     if payment_result["status"] == "SUCCESS":
 
         # Payment succeeded, so finalize the inventory reservation.
@@ -186,7 +187,32 @@ def create_order(
                 quantity=order_item.quantity,
             )
 
+        # -----------------------------------------------------
+        # Confirm order
+        # -----------------------------------------------------
+
         order.status = "CONFIRMED"
+
+        # -----------------------------------------------------
+        # Create transactional outbox event
+        # -----------------------------------------------------
+
+        outbox_event = OutboxEvent(
+            event_type="OrderConfirmed",
+            aggregate_type="order",
+            aggregate_id=order.id,
+            payload={
+                "order_id": str(order.id),
+                "user_id": str(order.user_id),
+                "total_amount": str(order.total_amount),
+            },
+        )
+
+        db.add(outbox_event)
+
+        # -----------------------------------------------------
+        # Commit order confirmation + outbox event together
+        # -----------------------------------------------------
 
         db.commit()
         db.refresh(order)

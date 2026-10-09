@@ -26,3 +26,5 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+shopsphere.code-workspace

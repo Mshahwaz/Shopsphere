@@ -5,12 +5,11 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: shopsphere_auth
-      POSTGRES_USER: shopsphere
-      POSTGRES_PASSWORD: shopsphere_dev_password
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
 
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -22,21 +21,151 @@ services:
       retries: 5
 
   auth-service:
-    build:
-      context: ./services/auth-service
+    image: ${AUTH_IMAGE}
     container_name: shopsphere_auth
     ports:
-      - "8001:8001"
+      - "8001:8000"
     environment:
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_NAME: shopsphere_auth
-      DATABASE_USER: shopsphere
-      DATABASE_PASSWORD: shopsphere_dev_password
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
+      USER_SERVICE_URL: http://user-service:8000
+      USER_SERVICE_AUTH_TOKEN: ${USER_SERVICE_AUTH_TOKEN}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
+      REFRESH_TOKEN_COOKIE_NAME: ${REFRESH_TOKEN_COOKIE_NAME}
+      REFRESH_TOKEN_COOKIE_SECURE: ${REFRESH_TOKEN_COOKIE_SECURE}
+      REFRESH_TOKEN_COOKIE_HTTPONLY: ${REFRESH_TOKEN_COOKIE_HTTPONLY}
+      REFRESH_TOKEN_COOKIE_SAMESITE: ${REFRESH_TOKEN_COOKIE_SAMESITE}
 
     depends_on:
       postgres:
         condition: service_healthy 
+
+  user-service:
+    image: ${USER_IMAGE}
+    container_name: shopsphere-user
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_user
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      SERVICE_AUTH_TOKEN: ${USER_SERVICE_AUTH_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  product-service:
+    image: ${PRODUCT_IMAGE}
+    container_name: shopsphere-product
+    restart: unless-stopped
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_product
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  inventory-service:
+    image: ${INVENTORY_IMAGE}
+    container_name: shopsphere-inventory
+    restart: unless-stopped
+    ports:
+      - "8004:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_inventory
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      SERVICE_AUTH_TOKEN: ${INVENTORY_SERVICE_AUTH_TOKEN}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  cart-service:
+    image: ${CART_IMAGE}
+    container_name: shopsphere-cart
+    restart: unless-stopped
+    ports:
+      - "8005:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_cart
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      PRODUCT_SERVICE_URL: http://product-service:8000
+      CART_SERVICE_AUTH_TOKEN: ${CART_SERVICE_AUTH_TOKEN}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  order-service:
+    image: ${ORDER_IMAGE}
+    container_name: shopsphere-order
+    restart: unless-stopped
+    ports:
+      - "8006:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_order
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      PRODUCT_SERVICE_URL: http://product-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+      CART_SERVICE_URL: http://cart-service:8000
+      INVENTORY_SERVICE_AUTH_TOKEN: ${INVENTORY_SERVICE_AUTH_TOKEN}
+      PAYMENT_SERVICE_AUTH_TOKEN: ${PAYMENT_SERVICE_AUTH_TOKEN}
+      CART_SERVICE_AUTH_TOKEN: ${CART_SERVICE_AUTH_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  payment-service:
+    image: ${PAYMENT_IMAGE}
+    container_name: shopsphere-payment
+    restart: unless-stopped
+    ports:
+      - "8007:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_payment
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      SERVICE_AUTH_TOKEN: ${PAYMENT_SERVICE_AUTH_TOKEN}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

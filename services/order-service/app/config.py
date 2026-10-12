@@ -19,6 +19,10 @@ class Settings(BaseSettings):
 
     jwt_secret: str
     jwt_algorithm: str
+    
+    aws_region: str = "us-east-1"
+    sqs_endpoint_url: str | None = None
+    sqs_queue_url: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -144,10 +144,15 @@ services:
       CART_SERVICE_AUTH_TOKEN: ${CART_SERVICE_AUTH_TOKEN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      AWS_REGION: ${AWS_REGION}
+      SQS_ENDPOINT_URL: ${SQS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
 
     depends_on:
       postgres:
         condition: service_healthy
+      localstack:
+        condition: service_started
 
   payment-service:
     image: ${PAYMENT_IMAGE}
@@ -166,6 +171,85 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  localstack:
+    image: localstack/localstack:stable
+    container_name: shopsphere-localstack
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:4566:4566"
+
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN}
+
+      LOCALSTACK_HOST: localstack:4566
+      SQS_ENDPOINT_STRATEGY: path
+
+  order-publisher:
+    image: ${ORDER_IMAGE}
+    container_name: shopsphere-order-publisher
+    restart: unless-stopped
+    command: ["python", "-m", "app.outbox_publisher"]
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_order
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      PRODUCT_SERVICE_URL: http://product-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+      CART_SERVICE_URL: http://cart-service:8000
+      INVENTORY_SERVICE_AUTH_TOKEN: ${INVENTORY_SERVICE_AUTH_TOKEN}
+      PAYMENT_SERVICE_AUTH_TOKEN: ${PAYMENT_SERVICE_AUTH_TOKEN}
+      CART_SERVICE_AUTH_TOKEN: ${CART_SERVICE_AUTH_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      AWS_REGION: ${AWS_REGION}
+      SQS_ENDPOINT_URL: ${SQS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+
+  order-consumer:
+    image: ${ORDER_IMAGE}
+    container_name: shopsphere-order-consumer
+    restart: unless-stopped
+    command: ["python", "-m", "app.sqs_consumer"]
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: shopsphere_order
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      PRODUCT_SERVICE_URL: http://product-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+      CART_SERVICE_URL: http://cart-service:8000
+      INVENTORY_SERVICE_AUTH_TOKEN: ${INVENTORY_SERVICE_AUTH_TOKEN}
+      PAYMENT_SERVICE_AUTH_TOKEN: ${PAYMENT_SERVICE_AUTH_TOKEN}
+      CART_SERVICE_AUTH_TOKEN: ${CART_SERVICE_AUTH_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      AWS_REGION: ${AWS_REGION}
+      SQS_ENDPOINT_URL: ${SQS_ENDPOINT_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+
+    depends_on:
+      localstack:
+        condition: service_started
 
 volumes:
   postgres_data:

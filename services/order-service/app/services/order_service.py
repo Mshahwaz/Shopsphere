@@ -1,9 +1,9 @@
 import uuid
 from decimal import Decimal
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from sqlalchemy.orm import Session
-
+from sqlalchemy.exc import SQLAlchemyError
 from app.models import Order, OrderItem, OutboxEvent
 from app.clients.product_client import get_product
 from app.clients.inventory_client import (
@@ -11,10 +11,7 @@ from app.clients.inventory_client import (
     release_stock,
     reduce_stock
 )
-from app.clients.payment_client import (
-    create_payment,
-    process_payment,
-)
+from app.clients.payment_client import create_checkout
 from app.clients.exceptions import PaymentFailedError
 
 from app.clients.cart_client import (
@@ -29,7 +26,7 @@ from app.clients.exceptions import (
 def create_order(
     db: Session,
     user_id: uuid.UUID,
-) -> Order:
+) -> tuple[Order, dict]:
 
     # =========================================================
     # 1. Get user's cart
@@ -140,112 +137,27 @@ def create_order(
         db.rollback()
         raise
 
-    # 5. Create payment
-    payment = create_payment(
-        order_id=order.id,
-        amount=order.total_amount,
-    )
+    # =========================================================
+    # 4. Create Razorpay Checkout
+    # =========================================================
 
-    # 6. Process payment
     try:
-        payment_result = process_payment(
-            payment_id=payment["id"],
+        checkout = create_checkout(
+            order_id=order.id,
+            amount=order.total_amount,
         )
 
-    except PaymentFailedError:
-
-        # Payment is known to have failed.
-        # Release all inventory reservations.
-        try:
-            for order_item in order_items:
-                release_stock(
-                    product_id=order_item.product_id,
-                    quantity=order_item.quantity,
-                )
-
-        except Exception:
-            # Compensation failed.
-            # Keep the order pending so that we do not falsely
-            # claim that the inventory was successfully released.
-            raise
-
-        order.status = "PAYMENT_FAILED"
-
-        db.commit()
-        db.refresh(order)
-
+    except Exception:
+        # Checkout creation failed or its outcome is uncertain.
+        # Keep the order PENDING rather than falsely confirming
+        # or marking payment as failed.
+        #
+        # Inventory compensation requires more careful handling
+        # because a timeout does not prove Razorpay created
+        # nothing. We will harden this in a later step.
         raise
 
-    # 7. Confirm order
-# 7. Confirm order
-    if payment_result["status"] == "SUCCESS":
-
-        # Payment succeeded, so finalize the inventory reservation.
-        for order_item in order_items:
-            reduce_stock(
-                product_id=order_item.product_id,
-                quantity=order_item.quantity,
-            )
-
-        # -----------------------------------------------------
-        # Confirm order
-        # -----------------------------------------------------
-
-        order.status = "CONFIRMED"
-
-        # -----------------------------------------------------
-        # Create transactional outbox event
-        # -----------------------------------------------------
-
-        outbox_event = OutboxEvent(
-            event_type="OrderConfirmed",
-            aggregate_type="order",
-            aggregate_id=order.id,
-            payload={
-                "order_id": str(order.id),
-                "user_id": str(order.user_id),
-                "total_amount": str(order.total_amount),
-            },
-        )
-
-        db.add(outbox_event)
-
-        # -----------------------------------------------------
-        # Commit order confirmation + outbox event together
-        # -----------------------------------------------------
-
-        db.commit()
-        db.refresh(order)
-
-        # -----------------------------------------------------
-        # Clear cart
-        # -----------------------------------------------------
-        #
-        # Order is already confirmed at this point.
-        #
-        # If cart clearing fails, we MUST NOT change the
-        # confirmed order back to failed.
-        #
-        # The cart may temporarily remain and can be handled
-        # later through retry/event-based compensation.
-        # -----------------------------------------------------
-
-        try:
-
-            clear_cart(
-                user_id=user_id,
-            )
-
-        except Exception:
-
-            # Do not invalidate a successfully completed order.
-            #
-            # In a later production iteration this should be
-            # handled with an event/outbox/retry mechanism.
-
-            pass
-
-    return order
+    return order, checkout
 
 
 def get_order(
@@ -362,3 +274,139 @@ def update_order_status(
         raise
 
     return order
+
+def confirm_order_after_payment(
+    db: Session,
+    order_id: uuid.UUID,
+    user_id: uuid.UUID,
+    payment: dict,
+) -> Order | None:
+    """
+    Confirm an order after the Payment Service has verified
+    a successful payment.
+
+    Inventory finalization is performed before the order
+    confirmation transaction is committed.
+    """
+
+    # 1. Validate the result returned by the Payment Service.
+    if payment.get("status") != "SUCCESS":
+        raise ValueError(
+            "Order can only be confirmed after successful payment"
+        )
+
+    payment_order_id = payment.get("order_id")
+
+    if payment_order_id is None:
+        raise ValueError(
+            "Payment response does not contain an order ID"
+        )
+
+    if str(payment_order_id) != str(order_id):
+        raise ValueError(
+            "Payment does not belong to this order"
+        )
+
+    try:
+        # 2. Lock the order row.
+        order = db.scalar(
+            select(Order)
+            .where(
+                Order.id == order_id,
+                Order.user_id == user_id,
+            )
+            .with_for_update()
+        )
+
+        if order is None:
+            return None
+
+        # 3. Make repeated successful requests idempotent
+        #    after the order has already been confirmed.
+        if order.status == "CONFIRMED":
+            return order
+
+        # 4. Do not confirm orders in an invalid state.
+        if order.status != "PENDING":
+            raise ValueError(
+                f"Cannot confirm order with status {order.status}"
+            )
+
+        # 5. Load the order's item snapshots.
+        items = list(
+            db.scalars(
+                select(OrderItem).where(
+                    OrderItem.order_id == order.id
+                )
+            ).all()
+        )
+
+        if not items:
+            raise ValueError(
+                "Cannot confirm an order without items"
+            )
+
+        # 6. Finalize the previously reserved inventory.
+        #
+        # IMPORTANT:
+        # Inventory Service has a separate database.
+        # These calls cannot be rolled back by db.rollback().
+        for item in items:
+            operation_id = uuid.uuid5(
+                order.id,
+                str(item.id),
+            )
+
+            reduce_stock(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                operation_id=operation_id,
+            )
+
+        # 7. Update the order and create its outbox event
+        #    in the same Order Service database transaction.
+        order.status = "CONFIRMED"
+
+        existing_event = db.scalar(
+            select(OutboxEvent).where(
+                OutboxEvent.event_type == "order.confirmed",
+                OutboxEvent.aggregate_type == "Order",
+                OutboxEvent.aggregate_id == order.id,
+            )
+        )
+
+        if existing_event is None:
+            event_payload = {
+                "order_id": str(order.id),
+                "user_id": str(order.user_id),
+                "status": "CONFIRMED",
+                "total_amount": str(order.total_amount),
+                "payment_id": str(payment.get("id", "")),
+                "items": [
+                    {
+                        "product_id": str(item.product_id),
+                        "product_name": item.product_name,
+                        "quantity": item.quantity,
+                        "unit_price": str(item.unit_price),
+                    }
+                    for item in items
+                ],
+            }
+
+            db.add(
+                OutboxEvent(
+                    event_type="order.confirmed",
+                    aggregate_type="Order",
+                    aggregate_id=order.id,
+                    payload=event_payload,
+                )
+            )
+
+        db.commit()
+        db.refresh(order)
+
+        return order
+
+    except Exception:
+        db.rollback()
+        raise

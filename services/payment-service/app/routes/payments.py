@@ -12,11 +12,17 @@ from app.database import get_db
 from app.schemas import (
     PaymentCreateRequest,
     PaymentResponse,
-    PaymentStatusUpdateRequest,
+    PaymentCheckoutResponse,
+    PaymentVerificationRequest,
     # PaymentProcessRequest
 )
-from app.services.payment_service import create_payment, update_payment_status, process_payment
+from app.services.payment_service import (
+    create_payment,
+    create_checkout,
+    verify_payment,
+    )
 from app.security import verify_service_token
+from app.config import settings
 
 router = APIRouter(
     prefix="/api/v1/payments",
@@ -45,55 +51,60 @@ def create_payment_endpoint(
         )
 
 
-@router.patch(
-    "/{payment_id}/status",
-    response_model=PaymentResponse,
+@router.post(
+    "/checkout",
+    response_model=PaymentCheckoutResponse,
+    status_code=status.HTTP_201_CREATED,
 )
-def update_payment_status_endpoint(
-    payment_id: uuid.UUID,
-    request: PaymentStatusUpdateRequest,
+def create_checkout_endpoint(
+    request: PaymentCreateRequest,
     db: Session = Depends(get_db),
     _: bool = Depends(verify_service_token),
 ):
     try:
-        payment = update_payment_status(
+        payment = create_checkout(
             db=db,
-            payment_id=payment_id,
-            new_status=request.status,
+            request=request,
         )
+
+        return PaymentCheckoutResponse(
+            payment_id=payment.id,
+            order_id=payment.order_id,
+            amount=payment.amount,
+            status=payment.status,
+            provider_order_id=payment.provider_order_id,
+            provider_key_id=settings.razorpay_key_id,
+            currency="INR",
+        )
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         )
-
-    if payment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment not found",
-        )
-
-    return payment
 
 @router.post(
-    "/{payment_id}/process",
+    "/{payment_id}/verify",
     response_model=PaymentResponse,
 )
-def process_payment_endpoint(
+def verify_payment_endpoint(
     payment_id: uuid.UUID,
+    request: PaymentVerificationRequest,
     db: Session = Depends(get_db),
     _: bool = Depends(verify_service_token),
 ):
     try:
-        payment = process_payment(
+        payment = verify_payment(
             db=db,
             payment_id=payment_id,
+            request=request,
         )
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
-        )
+        ) from exc
 
     if payment is None:
         raise HTTPException(

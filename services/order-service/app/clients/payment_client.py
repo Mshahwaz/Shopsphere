@@ -8,6 +8,7 @@ from app.clients.exceptions import (
     PaymentServiceUnavailableError,
     PaymentServiceTimeoutError,
     PaymentServiceError,
+    PaymentCheckoutOutcomeUnknownError,
 )
 
 SERVICE_HEADERS = {
@@ -95,3 +96,92 @@ def process_payment(payment_id: uuid.UUID):
         raise PaymentFailedError("Payment processing failed")
 
     return payment
+
+def create_checkout(order_id: uuid.UUID, amount):
+    url = f"{settings.payment_service_url}/api/v1/payments/checkout"
+
+    try:
+        response = httpx.post(
+            url,
+            json={
+                "order_id": str(order_id),
+                "amount": str(amount),
+            },
+            headers=SERVICE_HEADERS,
+            timeout=5.0,
+        )
+
+    except httpx.TimeoutException as exc:
+        raise PaymentCheckoutOutcomeUnknownError(
+            "Checkout initiation timed out; the payment outcome is unknown"
+        ) from exc
+
+    except httpx.RequestError as exc:
+        raise PaymentServiceUnavailableError(
+            "Payment Service is unavailable"
+        ) from exc
+
+    if response.status_code == 404:
+        raise PaymentNotFoundError("Payment not found")
+
+    if response.status_code >= 500:
+        raise PaymentServiceError(
+            "Payment Service returned a server error"
+        )
+
+    if response.status_code >= 400:
+        raise PaymentServiceError(
+            "Payment Service returned an unexpected error"
+        )
+
+    return response.json()
+
+def verify_payment(
+    payment_id: uuid.UUID,
+    provider_order_id: str,
+    provider_payment_id: str,
+    signature: str,
+):
+    url = (
+        f"{settings.payment_service_url}"
+        f"/api/v1/payments/{payment_id}/verify"
+    )
+
+    try:
+        response = httpx.post(
+            url,
+            json={
+                "provider_order_id": provider_order_id,
+                "provider_payment_id": provider_payment_id,
+                "signature": signature,
+            },
+            headers=SERVICE_HEADERS,
+            timeout=5.0,
+        )
+
+    except httpx.TimeoutException as exc:
+        raise PaymentServiceTimeoutError(
+            "Payment verification request timed out"
+        ) from exc
+
+    except httpx.RequestError as exc:
+        raise PaymentServiceUnavailableError(
+            "Payment Service is unavailable"
+        ) from exc
+
+    if response.status_code == 404:
+        raise PaymentNotFoundError(
+            "Payment not found"
+        )
+
+    if response.status_code >= 500:
+        raise PaymentServiceError(
+            "Payment Service returned a server error"
+        )
+
+    if response.status_code >= 400:
+        raise PaymentServiceError(
+            "Payment verification was rejected"
+        )
+
+    return response.json()

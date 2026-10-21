@@ -138,6 +138,7 @@ def reduce_stock_endpoint(
             db=db,
             product_id=product_id,
             quantity=request.quantity,
+            operation_id=request.operation_id,
         )
     except ValueError as exc:
         raise HTTPException(

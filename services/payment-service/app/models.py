@@ -36,6 +36,17 @@ class Payment(Base):
         default="PENDING",
     )
 
+    provider_order_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=True,
+    )
+
+    provider_payment_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

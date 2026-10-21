@@ -47,6 +47,9 @@ class PaymentServiceUnavailableError(Exception):
 class PaymentServiceTimeoutError(Exception):
     pass
 
+class PaymentCheckoutOutcomeUnknownError(Exception):
+    """Checkout initiation may have succeeded despite a timeout."""
+    pass
 
 class PaymentServiceError(Exception):
     pass

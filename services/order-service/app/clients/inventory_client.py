@@ -126,6 +126,7 @@ def release_stock(
 def reduce_stock(
     product_id: uuid.UUID,
     quantity: int,
+    operation_id: uuid.UUID,
 ):
     url = (
         f"{settings.inventory_service_url}"
@@ -133,6 +134,7 @@ def reduce_stock(
     )
 
     payload = {
+        "operation_id": str(operation_id),
         "quantity": quantity
     }
 

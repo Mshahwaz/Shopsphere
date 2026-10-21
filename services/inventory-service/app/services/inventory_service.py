@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Inventory
+from app.models import Inventory, InventoryOperation
 
 
 def add_stock(
@@ -116,31 +116,77 @@ def reduce_reserved_stock(
     db: Session,
     product_id: uuid.UUID,
     quantity: int,
+    operation_id: uuid.UUID,
 ) -> Inventory | None:
-
-    inventory = db.scalar(
-        select(Inventory)
-        .where(
-            Inventory.product_id == product_id
-        )
-        .with_for_update()
-    )
-
-    if inventory is None:
-        return None
-
-    if inventory.reserved_quantity < quantity:
-        raise ValueError(
-            "Insufficient reserved stock"
-        )
-
-    inventory.reserved_quantity -= quantity
-
     try:
+        # Check whether this operation has already been completed.
+        existing_operation = db.scalar(
+            select(InventoryOperation).where(
+                InventoryOperation.operation_id == operation_id
+            )
+        )
+
+        if existing_operation is not None:
+            if (
+                existing_operation.product_id != product_id
+                or existing_operation.quantity != quantity
+            ):
+                raise ValueError(
+                    "Operation ID was already used with different parameters"
+                )
+
+            # Return the current inventory without reducing stock again.
+            return db.scalar(
+                select(Inventory).where(
+                    Inventory.product_id == product_id
+                )
+            )
+
+        # Lock the inventory row to serialize reductions for this product.
+        inventory = db.scalar(
+            select(Inventory)
+            .where(Inventory.product_id == product_id)
+            .with_for_update()
+        )
+
+        if inventory is None:
+            return None
+
+        # Recheck after obtaining the product lock.
+        existing_operation = db.scalar(
+            select(InventoryOperation).where(
+                InventoryOperation.operation_id == operation_id
+            )
+        )
+
+        if existing_operation is not None:
+            if (
+                existing_operation.product_id != product_id
+                or existing_operation.quantity != quantity
+            ):
+                raise ValueError(
+                    "Operation ID was already used with different parameters"
+                )
+
+            return inventory
+
+        if inventory.reserved_quantity < quantity:
+            raise ValueError("Insufficient reserved stock")
+
+        inventory.reserved_quantity -= quantity
+
+        operation = InventoryOperation(
+            operation_id=operation_id,
+            product_id=product_id,
+            quantity=quantity,
+        )
+        db.add(operation)
+
         db.commit()
         db.refresh(inventory)
+
+        return inventory
+
     except Exception:
         db.rollback()
         raise
-
-    return inventory

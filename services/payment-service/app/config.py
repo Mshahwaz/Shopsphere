@@ -10,6 +10,9 @@ class Settings(BaseSettings):
 
     service_auth_token: str
 
+    razorpay_key_id: str
+    razorpay_key_secret: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

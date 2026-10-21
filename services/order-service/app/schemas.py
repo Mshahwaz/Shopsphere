@@ -24,6 +24,25 @@ class OrderResponse(BaseModel):
     total_amount: Decimal
     items: list[OrderItemResponse]
 
+class CheckoutDetailsResponse(BaseModel):
+    payment_id: uuid.UUID
+    order_id: uuid.UUID
+    amount: Decimal
+    status: str
+    provider_order_id: str
+    provider_key_id: str
+    currency: str
+
+
+class OrderCheckoutResponse(BaseModel):
+    order: OrderResponse
+    checkout: CheckoutDetailsResponse
+
+class PaymentVerificationRequest(BaseModel):
+    provider_order_id: str
+    provider_payment_id: str
+    signature: str
+
 class OrderSummaryResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -37,3 +56,9 @@ class OrderSummaryResponse(BaseModel):
 
 class OrderStatusUpdateRequest(BaseModel):
     status: str
+
+class OrderPaymentVerificationRequest(BaseModel):
+    payment_id: uuid.UUID
+    provider_order_id: str
+    provider_payment_id: str
+    signature: str

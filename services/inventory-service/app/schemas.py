@@ -28,6 +28,5 @@ class ReleaseRequest(BaseModel):
     )
 
 class StockReductionRequest(BaseModel):
-    quantity: int = Field(
-        gt=0,
-    )
+    operation_id: uuid.UUID
+    quantity: int = Field(gt=0)
